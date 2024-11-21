@@ -1,0 +1,71 @@
+def filter_by_size(df, size_column,title="data_name",plot=True):
+    """
+
+    This function identifies the range [L0, 2*L0] in the given size_column
+    that contains the most data points, filters the DataFrame to include
+    only rows within this range, and visualizes the result with a histogram.
+    
+    Parameters
+    ----------
+    df : DataFrame
+        The input DataFrame containing the data.
+    size_column : str
+        The name of the column containing size-related data (e.g., cell sizes).
+    title : str
+        The title of the data being analyzed (for plotting).
+    plot : bool
+        Whether to plot the histogram of the data and the selected range.
+    
+    Returns
+    -------
+    DataFrame
+        A filtered DataFrame containing only rows within the optimal range [L0, 2*L0] containing the most datapoints.
+    """
+    
+    # Convert the size_column to a sorted NumPy array for efficient computation.
+    # Sorting ensures that we can use binary search and other vectorized operations.
+    size_data = np.sort(df[size_column].values)
+    
+    # Define all possible lower bounds (L0 values).
+    # Since L0 must be one of the values in size_data, we simply use the sorted array itself.
+    L0_values = size_data
+    
+    # Use NumPy's `searchsorted` to calculate counts for each potential L0.
+    # - `np.searchsorted(size_data, 2 * L0_values, side='right')` finds where 2*L0 would fit in size_data.
+    # - This gives the index of the first value greater than 2*L0 for each L0.
+    # - Subtracting `np.arange(len(size_data))` gives the count of values in [L0, 2*L0].
+    counts = np.searchsorted(size_data, 2 * L0_values, side='right') - np.arange(len(size_data))
+    
+    # Find the index of the maximum count.
+    # - `np.argmax(counts)` returns the index where the count is highest.
+    # - Use this index to find the corresponding best L0 value.
+    max_count_idx = np.argmax(counts)
+    best_L0 = L0_values[max_count_idx]
+    
+    # Filter the original DataFrame based on the optimal range [L0, 2*L0].
+    # - Create a Boolean mask to select rows where size_column is between best_L0 and 2*best_L0.
+    filtered_df = df[(df[size_column] >= best_L0) & (df[size_column] <= 2 * best_L0)]
+    print(f"Number of data points in the optimal range [{best_L0}, {2 * best_L0}]: {len(filtered_df)}")
+    if plot:    
+        # Visualize the data and highlight the selected range on a histogram.
+        fig, ax = plt.subplots()
+        
+        # Plot a histogram of all size data with 100 bins for better granularity.
+        ax.hist(size_data, bins=100, color='blue', edgecolor='black')
+        
+        # Add vertical lines to mark L0 and 2*L0 on the histogram for visualization purposes.
+        ax.axvline(x=best_L0, color='black', linestyle='-', linewidth=3)
+        ax.axvline(x=2 * best_L0, color='black', linestyle='-', linewidth=3)
+        
+        # Label axes and add x_ticks for L0 and 2*L0.
+        ax.set_title(f'Distribution of Cell Sizes for {title}')
+        ax.set_xlabel('Cell Area (pixels)')
+        ax.set_ylabel('Frequency')
+        ax.legend()
+        
+        # Display the plot to show how data is distributed and which range was selected.
+        plt.show()
+        
+    # Return the filtered DataFrame containing only rows within [L0, 2*L0].
+    return filtered_df
+
